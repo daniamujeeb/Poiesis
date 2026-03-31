@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poiesis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; font-family: 'Georgia', serif; overflow: hidden; }
+
+  #ui-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+
+  .ui-screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 1.4s ease;
+  }
+  .ui-screen.active { opacity: 1; pointer-events: all; }
+
+  /* Intro */
+  .intro-title {
+    font-size: clamp(60px, 10vw, 120px);
+    font-weight: 300;
+    color: #f0ece4;
+    letter-spacing: 0.2em;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: riseIn 2s ease 0.6s forwards;
+  }
+  .intro-sub {
+    font-size: clamp(12px, 1.6vw, 16px);
+    font-weight: 300;
+    font-style: italic;
+    color: #b8a882;
+    letter-spacing: 0.3em;
+    margin-top: 16px;
+    text-align: center;
+    opacity: 0;
+    animation: riseIn 2s ease 1.4s forwards;
+  }
+  .intro-rule {
+    width: 1px; height: 0;
+    background: linear-gradient(to bottom, transparent, #b8a882, transparent);
+    margin: 36px auto;
+    animation: growLine 1s ease 2.2s forwards;
+  }
+  .intro-question {
+    font-size: clamp(13px, 1.8vw, 18px);
+    font-style: italic;
+    color: rgba(240,236,228,0.5);
+    text-align: center;
+    max-width: 480px;
+    line-height: 1.8;
+    opacity: 0;
+    animation: riseIn 2s ease 2.8s forwards;
+  }
+  .begin-btn {
+    margin-top: 48px;
+    background: none;
+    border: 1px solid rgba(184,168,130,0.4);
+    color: #b8a882;
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    padding: 14px 40px;
+    cursor: pointer;
+    opacity: 0;
+    animation: riseIn 2s ease 3.4s forwards;
+    transition: all 0.5s;
+  }
+  .begin-btn:hover { background: rgba(184,168,130,0.1); border-color: #b8a882; color: #f0ece4; }
+
+  .vr-hint {
+    margin-top: 20px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(184,168,130,0.35);
+    text-align: center;
+    opacity: 0;
+    animation: riseIn 2s ease 3.8s forwards;
+  }
+
+  /* Questions */
+  #screen-q { max-width: 640px; margin: auto; gap: 0; }
+  .q-num {
+    font-size: 10px; letter-spacing: 0.5em;
+    color: #b8a882; opacity: 0.5;
+    align-self: flex-start; margin-bottom: 48px;
+    font-family: 'Courier New', monospace;
+  }
+  .q-text {
+    font-size: clamp(22px, 3.5vw, 40px);
+    font-weight: 300; font-style: italic;
+    color: #f0ece4; line-height: 1.5;
+    align-self: flex-start; margin-bottom: 44px;
+    transition: opacity 0.6s;
+  }
+  .q-field {
+    width: 100%; background: none; border: none;
+    border-bottom: 1px solid rgba(240,236,228,0.18);
+    color: #f0ece4;
+    font-family: 'Georgia', serif;
+    font-size: clamp(15px, 2vw, 21px);
+    font-weight: 300; padding: 10px 0;
+    outline: none; caret-color: #b8a882;
+    transition: border-color 0.4s;
+  }
+  .q-field:focus { border-bottom-color: #b8a882; }
+  .q-field::placeholder { color: rgba(240,236,228,0.18); font-style: italic; }
+  .q-hint {
+    font-family: 'Courier New', monospace;
+    font-size: 9px; letter-spacing: 0.3em;
+    color: rgba(240,236,228,0.18);
+    margin-top: 14px; align-self: flex-start;
+  }
+  .q-continue {
+    align-self: flex-end; margin-top: 52px;
+    background: none; border: none;
+    color: #b8a882;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.4em;
+    cursor: pointer; opacity: 0.4;
+    transition: opacity 0.3s;
+  }
+  .q-continue.ready { opacity: 1; }
+
+  /* Companion */
+  #screen-companion { max-width: 620px; margin: auto; gap: 0; }
+  .poiesis-label {
+    font-family: 'Courier New', monospace;
+    font-size: 9px; letter-spacing: 0.55em;
+    color: #b8a882; opacity: 0.45;
+    align-self: flex-start; margin-bottom: 36px;
+  }
+  .companion-text {
+    font-size: clamp(17px, 2.6vw, 28px);
+    font-weight: 300; font-style: italic;
+    color: #f0ece4; line-height: 1.75;
+    align-self: flex-start; min-height: 160px;
+  }
+  .cursor-blink {
+    display: inline-block; width: 2px; height: 1em;
+    background: #b8a882; margin-left: 3px;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+  .craft-label {
+    font-family: 'Courier New', monospace;
+    font-size: 9px; letter-spacing: 0.5em;
+    color: rgba(240,236,228,0.2);
+    margin-top: 52px; align-self: flex-start;
+  }
+  .craft-word {
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 300; letter-spacing: 0.14em;
+    color: #b8a882; margin-top: 8px;
+    align-self: flex-start;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 1.2s, transform 1.2s;
+  }
+  .craft-word.show { opacity: 1; transform: translateY(0); }
+  .enter-vr-btn {
+    align-self: flex-end; margin-top: 48px;
+    background: none;
+    border: 1px solid rgba(184,168,130,0.3);
+    color: #b8a882;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.3em;
+    padding: 12px 28px; cursor: pointer;
+    transition: all 0.4s;
+  }
+  .enter-vr-btn:hover { border-color: #b8a882; color: #f0ece4; background: rgba(184,168,130,0.08); }
+  .again-link {
+    align-self: center; margin-top: 20px;
+    background: none; border: none;
+    color: rgba(184,168,130,0.35);
+    font-family: 'Courier New', monospace;
+    font-size: 9px; letter-spacing: 0.3em;
+    cursor: pointer; transition: color 0.3s;
+  }
+  .again-link:hover { color: #b8a882; }
+
+  /* Loading dots */
+  .loading::after {
+    content: '';
+    animation: ldots 1.4s steps(4, end) infinite;
+  }
+  @keyframes ldots {
+    0%  { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  @keyframes riseIn { to { opacity: 1; transform: translateY(0); } }
+  @keyframes growLine { to { height: 56px; } }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* VR scene sits behind UI */
+  a-scene { position: fixed; inset: 0; z-index: 1; }
+
+  /* Hide A-Frame VR button — we add our own */
+  .a-enter-vr { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══ 3D WORLD ══════════════════════════════════════════════════════════════ -->
+<a-scene
+  id="vr-scene"
+  background="color: #04030a"
+  fog="type: exponential; color: #07050f; density: 0.035"
+  renderer="antialias: true; colorManagement: true"
+  vr-mode-ui="enabled: false"
+>
+  <!-- Lighting -->
+  <a-light type="ambient" color="#1a1630" intensity="0.8"></a-light>
+  <a-light type="directional" color="#b8a882" intensity="0.3" position="2 4 -3"></a-light>
+  <a-light type="point" color="#3d2a6e" intensity="1.2" position="0 2 -4" distance="12"></a-light>
+  <a-light type="point" color="#1a3a4a" intensity="0.8" position="-4 1 -6" distance="10"></a-light>
+
+  <!-- Ground plane — dark, subtle -->
+  <a-plane
+    position="0 -1.8 -4"
+    rotation="-90 0 0"
+    width="40" height="40"
+    color="#06040e"
+    roughness="0.95"
+    metalness="0.1"
+  ></a-plane>
+
+  <!-- Floating geometry — workshop objects emerging from fog -->
+  <a-entity id="workshop">
+
+    <!-- Large slow-rotating ring -->
+    <a-torus
+      position="0 1.2 -7"
+      radius="3.2" radius-tubular="0.015"
+      color="#2a1f50" opacity="0.6"
+      animation="property: rotation; to: 0 360 15; loop: true; dur: 60000; easing: linear"
+    ></a-torus>
+    <a-torus
+      position="0 1.2 -7"
+      radius="2.4" radius-tubular="0.01"
+      color="#b8a882" opacity="0.15"
+      animation="property: rotation; to: 0 -360 -8; loop: true; dur: 80000; easing: linear"
+    ></a-torus>
+
+    <!-- Floating orbs — particles of light -->
+    <a-sphere position="-2.8 0.4 -5" radius="0.06" color="#b8a882" opacity="0.7"
+      animation="property: position; to: -2.8 0.9 -5; loop: true; dur: 4000; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+    <a-sphere position="2.4 1.2 -6" radius="0.04" color="#8a7fcc" opacity="0.6"
+      animation="property: position; to: 2.4 1.7 -6; loop: true; dur: 5500; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+    <a-sphere position="-1.2 2.1 -8" radius="0.05" color="#c4a86a" opacity="0.5"
+      animation="property: position; to: -1.2 2.6 -8; loop: true; dur: 3800; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+    <a-sphere position="3.1 0.2 -7" radius="0.035" color="#7a8faa" opacity="0.55"
+      animation="property: position; to: 3.1 0.7 -7; loop: true; dur: 6200; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+    <a-sphere position="0.8 2.8 -9" radius="0.045" color="#b8a882" opacity="0.4"
+      animation="property: position; to: 0.8 3.3 -9; loop: true; dur: 4800; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+    <a-sphere position="-3.5 1.5 -8" radius="0.03" color="#9a86cc" opacity="0.5"
+      animation="property: position; to: -3.5 2 -8; loop: true; dur: 7000; dir: alternate; easing: easeInOutSine">
+    </a-sphere>
+
+    <!-- Scattered workshop tools — simple abstract forms -->
+    <a-box position="-3 -1.2 -5" width="0.4" height="0.08" depth="0.08"
+      color="#2a1f40" opacity="0.8" rotation="0 25 0">
+    </a-box>
+    <a-box position="2.8 -1.2 -4.5" width="0.06" height="0.9" depth="0.06"
+      color="#1e1630" opacity="0.9" rotation="0 -15 8">
+    </a-box>
+    <a-cylinder position="-1.8 -1.2 -4" radius="0.12" height="0.06"
+      color="#2a2040" opacity="0.7">
+    </a-cylinder>
+
+    <!-- Craft word in 3D — appears after response -->
+    <a-text
+      id="craft-3d"
+      value=""
+      position="0 1.4 -5"
+      align="center"
+      color="#b8a882"
+      width="6"
+      font="https://cdn.jsdelivr.net/gh/etiennepinchon/aframe-fonts@master/fonts/cinzel/Cinzel-Regular.json"
+      opacity="0"
+      animation__fade="property: opacity; from: 0; to: 0; dur: 2000"
+      animation__float="property: position; to: 0 1.7 -5; loop: true; dur: 5000; dir: alternate; easing: easeInOutSine"
+    ></a-text>
+
+  </a-entity>
+
+  <!-- Camera -->
+  <a-entity position="0 0 0">
+    <a-camera
+      look-controls="enabled: true; magicWindowTrackingEnabled: true"
+      wasd-controls="enabled: false"
+      position="0 1.6 0"
+    ></a-camera>
+  </a-entity>
+
+</a-scene>
+
+<!-- ═══ 2D UI OVERLAY ════════════════════════════════════════════════════════ -->
+<div id="ui-overlay">
+
+  <!-- SCREEN 1: Intro -->
+  <div class="ui-screen active" id="screen-intro">
+    <h1 class="intro-title">Poiesis</h1>
+    <p class="intro-sub">the act of bringing something into being</p>
+    <div class="intro-rule"></div>
+    <p class="intro-question">
+      What if you could meet yourself<br>
+      without your name, your title,<br>
+      your history?
+    </p>
+    <button class="begin-btn" onclick="startExperience()">BEGIN</button>
+    <p class="vr-hint">OPEN IN QUEST BROWSER FOR FULL IMMERSION</p>
+  </div>
+
+  <!-- SCREEN 2: Questions -->
+  <div class="ui-screen" id="screen-q">
+    <p class="q-num" id="q-num">01 / 04</p>
+    <p class="q-text" id="q-text">Who are you — without your name?</p>
+    <input class="q-field" id="q-field" type="text"
+      placeholder="speak freely..."
+      autocomplete="off" spellcheck="false"
+    />
+    <p class="q-hint">press enter or tap continue</p>
+    <button class="q-continue" id="q-continue" onclick="nextQ()">CONTINUE →</button>
+  </div>
+
+  <!-- SCREEN 3: Companion response -->
+  <div class="ui-screen" id="screen-companion">
+    <p class="poiesis-label">POIESIS SPEAKS</p>
+    <p class="companion-text" id="companion-text"></p>
+    <p class="craft-label">YOUR CRAFT</p>
+    <p class="craft-word" id="craft-word"></p>
+    <button class="enter-vr-btn" id="enter-vr-btn" onclick="enterVR()">ENTER THE SPACE →</button>
+    <button class="again-link" onclick="restart()">begin again</button>
+  </div>
+
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const questions    = [
+  "Who are you — without your name?",
+  "What do you love doing when no one is watching?",
+  "If you had no obligations, what would you make?",
+  "What feeling do you most want to give the world?"
+];
+const placeholders = [
+  "beyond names, beyond titles...",
+  "your secret honest answer...",
+  "without limits or judgment...",
+  "speak from somewhere deep..."
+];
+
+let currentQ = 0;
+let answers   = [];
+let craftResult = '';
+
+// ─── DOM refs ─────────────────────────────────────────────────────────────────
+const qNum       = document.getElementById('q-num');
+const qText      = document.getElementById('q-text');
+const qField     = document.getElementById('q-field');
+const qContinue  = document.getElementById('q-continue');
+const companionEl = document.getElementById('companion-text');
+const craftEl    = document.getElementById('craft-word');
+const craft3d    = document.getElementById('craft-3d');
+
+// ─── Screen switching ─────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.ui-screen').forEach(s => {
+    s.classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+function startExperience() {
+  startMusic();
+  showScreen('screen-q');
+  setTimeout(() => qField.focus(), 600);
+}
+
+// ─── Question logic ───────────────────────────────────────────────────────────
+qField.addEventListener('input', () => {
+  qContinue.classList.toggle('ready', qField.value.trim().length > 2);
+});
+qField.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && qField.value.trim().length > 2) nextQ();
+});
+
+function nextQ() {
+  const val = qField.value.trim();
+  if (!val) return;
+  answers.push(val);
+  currentQ++;
+
+  if (currentQ < questions.length) {
+    qText.style.opacity = '0';
+    qField.style.opacity = '0';
+    setTimeout(() => {
+      qNum.textContent     = String(currentQ + 1).padStart(2,'0') + ' / 0' + questions.length;
+      qText.textContent    = questions[currentQ];
+      qField.placeholder   = placeholders[currentQ];
+      qField.value         = '';
+      qContinue.classList.remove('ready');
+      qText.style.transition  = 'opacity 0.8s';
+      qField.style.transition = 'opacity 0.8s';
+      qText.style.opacity  = '1';
+      qField.style.opacity = '1';
+      qField.focus();
+    }, 500);
+  } else {
+    showScreen('screen-companion');
+    generateResponse();
+  }
+}
+
+// ─── Smart response engine ────────────────────────────────────────────────────
+const reflections = [
+  { keys: ['creat','mak','build','design','art','draw','paint','craft','sculpt','write','music','song','danc','film','photo'],
+    craft: 'living form',
+    texts: [
+      "You make things so that the world can feel what you feel — and that is not a small gift. Whatever you bring into being carries a frequency only you can generate.",
+      "There is a maker in you that does not wait for permission. The work you create holds the shape of something irreducibly true.",
+      "You don't just make things. You translate something invisible into something the rest of us can finally touch."
+    ]
+  },
+  { keys: ['connect','people','listen','help','care','heal','support','community','together','human','empathy','teach','guide'],
+    craft: 'quiet bridges',
+    texts: [
+      "You are the kind of person a room changes around. What you bring is not loudness but presence — and presence is rarer than talent.",
+      "You hold space for others without losing yourself. That is harder than it sounds, and more beautiful than most will ever name.",
+      "You build invisible bridges between people who didn't know they needed each other. Most never give that a name. It deserves one."
+    ]
+  },
+  { keys: ['think','question','wonder','curious','learn','understand','explore','discover','research','idea','solv','analys','investigat'],
+    craft: 'named questions',
+    texts: [
+      "Your mind is not restless — it is alive. The questions you carry are not problems to be solved but doors you keep opening for others.",
+      "You think because the world deserves to be understood more deeply. That is not a hobby. That is a vocation.",
+      "The questions you ask quietly reshape every room you walk into. Most people never notice — but they feel it."
+    ]
+  },
+  { keys: ['nature','earth','grow','plant','animal','land','sea','sky','quiet','peace','still','slow','simple','garden','forest'],
+    craft: 'deep stillness',
+    texts: [
+      "You carry a kind of slowness the world is desperate for and doesn't know how to ask for. What you offer is not absence — it is depth.",
+      "There is something in you that knows how to be still while everything moves. That is not passivity. That is the oldest form of wisdom.",
+      "You are drawn to what endures — and so you endure. The world needs people who remember what is real."
+    ]
+  },
+  { keys: ['freedom','change','justice','truth','voice','speak','story','express','authentic','real','honest','fair','equal','right'],
+    craft: 'honest light',
+    texts: [
+      "You want to say the true thing in a world full of comfortable untruths. That takes more courage than most people will ever know.",
+      "Your need for authenticity is not stubbornness — it is integrity. You are someone who cannot pretend, and that is a gift, not a flaw.",
+      "You carry a story the world needs to hear in exactly your voice. No one else can tell it."
+    ]
+  },
+  { keys: ['joy','play','laugh','fun','light','celebrat','wonder','magic','dream','imagine','child','delight','games'],
+    craft: 'living wonder',
+    texts: [
+      "You have kept alive something most people lose around the age of ten. That is not naivety — that is the hardest kind of wisdom.",
+      "The lightness you bring is not shallowness. It is a choice you make every day against the weight of things.",
+      "You remind people that delight is not a reward for finishing the serious work — it is the work."
+    ]
+  }
+];
+
+const defaults = [
+  { craft: 'your becoming',
+    text: "Something in the way you answered tells me you already know yourself — you have just been too busy performing a version of yourself to notice." },
+  { craft: 'unnamed depth',
+    text: "You are harder to categorise than most, which means you contain more. The world will keep trying to name you. You don't have to let it." },
+  { craft: 'open form',
+    text: "What you are is still becoming. That is not uncertainty — that is the most alive a person can be." }
+];
+
+async function generateResponse() {
+  companionEl.innerHTML = '<span class="loading">Poiesis listens</span>';
+  craftEl.classList.remove('show');
+
+  await new Promise(r => setTimeout(r, 2400));
+
+  const combined = answers.join(' ').toLowerCase();
+  let best = null, bestScore = 0;
+
+  for (const group of reflections) {
+    const score = group.keys.filter(k => combined.includes(k)).length;
+    if (score > bestScore) { bestScore = score; best = group; }
+  }
+
+  let text, craft;
+  if (best && bestScore > 0) {
+    text  = best.texts[Math.floor(Math.random() * best.texts.length)];
+    craft = best.craft;
+  } else {
+    const d = defaults[Math.floor(Math.random() * defaults.length)];
+    text  = d.text;
+    craft = d.craft;
+  }
+
+  craftResult = craft;
+
+  companionEl.innerHTML = '';
+  await typeText(companionEl, text);
+
+  craftEl.textContent = craft;
+  setTimeout(() => craftEl.classList.add('show'), 500);
+
+  // Prime the 3D craft word for when they enter VR
+  craft3d.setAttribute('value', craft.toUpperCase());
+}
+
+// ─── Type text ────────────────────────────────────────────────────────────────
+function typeText(el, text, speed = 26) {
+  return new Promise(resolve => {
+    let i = 0;
+    const cur = document.createElement('span');
+    cur.className = 'cursor-blink';
+    el.appendChild(cur);
+    const iv = setInterval(() => {
+      el.insertBefore(document.createTextNode(text[i]), cur);
+      i++;
+      if (i >= text.length) {
+        clearInterval(iv);
+        setTimeout(() => { cur.remove(); resolve(); }, 900);
+      }
+    }, speed);
+  });
+}
+
+// ─── Enter VR ─────────────────────────────────────────────────────────────────
+function enterVR() {
+  // Fade out the 2D UI
+  document.getElementById('ui-overlay').style.transition = 'opacity 2s';
+  document.getElementById('ui-overlay').style.opacity   = '0';
+  setTimeout(() => {
+    document.getElementById('ui-overlay').style.pointerEvents = 'none';
+  }, 2000);
+
+  // Reveal craft word in 3D space
+  setTimeout(() => {
+    craft3d.setAttribute('animation__fade', 'property: opacity; from: 0; to: 0.85; dur: 3000; easing: easeInOutSine');
+  }, 1000);
+
+  // Try to enter native VR if on Quest
+  const scene = document.getElementById('vr-scene');
+  if (scene && scene.is('vr-mode')) return;
+  if (navigator.xr) {
+    scene.enterVR().catch(() => {});
+  }
+}
+
+// ─── Restart ──────────────────────────────────────────────────────────────────
+function restart() {
+  currentQ    = 0;
+  answers     = [];
+  craftResult = '';
+  currentQ    = 0;
+
+  qNum.textContent   = '01 / 04';
+  qText.textContent  = questions[0];
+  qField.placeholder = placeholders[0];
+  qField.value       = '';
+  qContinue.classList.remove('ready');
+  companionEl.innerHTML = '';
+  craftEl.textContent   = '';
+  craftEl.classList.remove('show');
+  craft3d.setAttribute('value', '');
+  craft3d.setAttribute('animation__fade', 'property: opacity; from: 0; to: 0; dur: 10');
+
+  document.getElementById('ui-overlay').style.opacity    = '1';
+  document.getElementById('ui-overlay').style.pointerEvents = 'all';
+
+  showScreen('screen-intro');
+}
+
+// ─── Generative ambient music ──────────────────────────────────────────────────
+let audioStarted = false;
+let musicParts   = [];
+
+async function startMusic() {
+  if (audioStarted) return;
+  audioStarted = true;
+  await Tone.start();
+
+  // Master reverb and effects chain
+  const reverb = new Tone.Reverb({ decay: 12, wet: 0.82 }).toDestination();
+  const delay  = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.38, wet: 0.28 }).connect(reverb);
+  const vol    = new Tone.Volume(-14).connect(delay);
+
+  // Soft sine pad — slow evolving chord
+  const pad = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sine' },
+    envelope: { attack: 3.5, decay: 2, sustain: 0.7, release: 6 },
+    volume: -8
+  }).connect(vol);
+
+  // Breathy high harmonics
+  const shimmer = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 5, decay: 3, sustain: 0.4, release: 8 },
+    volume: -18
+  }).connect(vol);
+
+  // Deep sub tone
+  const sub = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 4, decay: 4, sustain: 0.5, release: 8 },
+    volume: -20
+  }).connect(vol);
+
+  // Pentatonic scale — no dissonance, always serene
+  const scale = ['C3','E3','G3','A3','B3','D4','E4','G4','A4','B4','D5','E5'];
+  const chords = [
+    ['C3','G3','E4','B4'],
+    ['A2','E3','C4','G4'],
+    ['G2','D3','B3','F4'],
+    ['E2','B2','G3','D4'],
+  ];
+
+  let chordIdx = 0;
+
+  // Slow pad chords — change every 20 seconds
+  const padLoop = new Tone.Loop(time => {
+    pad.releaseAll();
+    const chord = chords[chordIdx % chords.length];
+    chord.forEach(note => pad.triggerAttack(note, time));
+    chordIdx++;
+  }, '20n');
+  Tone.Transport.bpm.value = 3; // very slow
+  padLoop.start(0);
+
+  // Occasional shimmer notes
+  const shimmerLoop = new Tone.Loop(time => {
+    if (Math.random() > 0.4) {
+      const note = scale[Math.floor(Math.random() * scale.length)];
+      shimmer.triggerAttackRelease(note, '4n', time);
+    }
+  }, '6n');
+  shimmerLoop.start('4n');
+
+  // Deep sub pulse — very slow
+  const subLoop = new Tone.Loop(time => {
+    sub.triggerAttackRelease('C2', '2n', time);
+  }, '40n');
+  subLoop.start('8n');
+
+  musicParts = [padLoop, shimmerLoop, subLoop];
+  Tone.Transport.start();
+
+  // Fade in gently
+  vol.volume.rampTo(-6, 8);
+}
+
+function stopMusic() {
+  if (!audioStarted) return;
+  musicParts.forEach(p => p.stop());
+  Tone.Transport.stop();
+  audioStarted = false;
+}
+</script>
+</body>
+</html>
