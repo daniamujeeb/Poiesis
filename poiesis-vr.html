@@ -344,6 +344,7 @@
   </p>
   <button class="begin-btn" onclick="begin()">BEGIN</button>
   <button class="vr-btn" onclick="goFullscreen()">⛶ FULLSCREEN</button>
+  <button class="vr-btn" onclick="enterVR()">ENTER VR SPACE ↗</button>
 </div>
 
 <!-- SCREEN 2: Questions -->
@@ -539,6 +540,35 @@ function restart(){
   goTo('screen-intro');
 }
 
+// ── Enter VR ──────────────────────────────────────────
+function enterVR(){
+  const scene = document.getElementById('vr-scene');
+  if (!scene) return;
+  // Try WebXR first (Quest)
+  if (navigator.xr) {
+    scene.enterVR().catch(() => {
+      // Fallback: go fullscreen
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    });
+  } else {
+    // Desktop fallback: fullscreen
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }
+}
+
+// ── Enter VR ──────────────────────────────────────────
+function enterVR() {
+  const scene = document.getElementById('vr-scene');
+  if (scene) {
+    scene.enterVR().catch(e => {
+      // Fallback to fullscreen if WebXR not available
+      document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    });
+  }
 }
 // ── Fullscreen ────────────────────────────────────────
 function goFullscreen() {
