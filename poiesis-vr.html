@@ -7,677 +7,585 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; font-family: 'Georgia', serif; overflow: hidden; }
-
-  #ui-overlay {
-    position: fixed; inset: 0; z-index: 100;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    pointer-events: none;
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue-deep:  #04070f;
+    --blue-mid:   #0a1628;
+    --blue-glow:  #1a4a8a;
+    --nebula:     #2a6abf;
+    --paper:      #e8f0ff;
+    --gold:       #c9a84c;
+    --gold-dim:   rgba(201,168,76,0.15);
+    --accent:     #4a9eff;
+    --serif:      'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --mono:       'DM Mono', 'Courier New', monospace;
+  }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--blue-deep);
+    color: var(--paper);
+    font-family: var(--serif);
+    overflow: hidden; cursor: none;
   }
 
-  .ui-screen {
-    position: absolute; inset: 0;
+  /* Cursor */
+  #cursor {
+    position: fixed; width: 5px; height: 5px;
+    background: var(--accent); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    position: fixed; width: 30px; height: 30px;
+    border: 1px solid rgba(74,158,255,0.4); border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%,-50%);
+    transition: width 0.3s, height 0.3s, border-color 0.3s;
+  }
+
+
+  /* Breathing rings */
+  #breath-ring {
+    position: fixed; top: 50%; left: 50%;
+    width: 360px; height: 360px;
+    border: 1px solid rgba(74,158,255,0.08); border-radius: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 2; opacity: 0;
+    transition: opacity 2s;
+    animation: breathe 8s ease-in-out infinite;
+  }
+  #breath-ring-2 {
+    position: fixed; top: 50%; left: 50%;
+    width: 580px; height: 580px;
+    border: 1px solid rgba(74,158,255,0.04); border-radius: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 2; opacity: 0;
+    transition: opacity 2s;
+    animation: breathe 11s ease-in-out infinite 1.5s;
+  }
+  @keyframes breathe {
+    0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    50%      { transform: translate(-50%,-50%) scale(1.07); opacity: 0.4; }
+  }
+
+  /* Corner marks */
+  .corner { position: fixed; width: 22px; height: 22px; opacity: 0; z-index: 5; transition: opacity 2s; }
+  .corner::before, .corner::after { content: ''; position: absolute; background: var(--accent); opacity: 0.4; }
+  .corner::before { width: 1px; height: 100%; }
+  .corner::after  { width: 100%; height: 1px; }
+  .corner.tl { top: 28px; left: 28px; }
+  .corner.tr { top: 28px; right: 28px; transform: scaleX(-1); }
+  .corner.bl { bottom: 28px; left: 28px; transform: scaleY(-1); }
+  .corner.br { bottom: 28px; right: 28px; transform: scale(-1); }
+  .corner.show { opacity: 1; }
+
+  /* 3D scene sits behind everything */
+  a-scene { position: fixed; inset: 0; z-index: 0; }
+  .a-enter-vr { display: none !important; }
+
+  /* Screens */
+  .screen {
+    position: fixed; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 40px;
-    opacity: 0; pointer-events: none;
+    z-index: 10; opacity: 0; pointer-events: none;
     transition: opacity 1.4s ease;
+    padding: 60px 40px;
   }
-  .ui-screen.active { opacity: 1; pointer-events: all; }
+  .screen.active { opacity: 1; pointer-events: all; }
 
   /* Intro */
-  .intro-title {
-    font-size: clamp(60px, 10vw, 120px);
-    font-weight: 300;
-    color: #f0ece4;
-    letter-spacing: 0.2em;
-    text-align: center;
-    opacity: 0;
-    transform: translateY(16px);
-    animation: riseIn 2s ease 0.6s forwards;
+  .poiesis-title {
+    font-size: clamp(68px, 11vw, 124px);
+    font-weight: 300; letter-spacing: 0.2em;
+    color: var(--paper); line-height: 1; text-align: center;
+    opacity: 0; transform: translateY(18px);
+    animation: fadeUp 2s ease 0.4s forwards;
+    text-shadow: 0 0 60px rgba(74,158,255,0.3);
   }
-  .intro-sub {
-    font-size: clamp(12px, 1.6vw, 16px);
-    font-weight: 300;
-    font-style: italic;
-    color: #b8a882;
-    letter-spacing: 0.3em;
-    margin-top: 16px;
-    text-align: center;
-    opacity: 0;
-    animation: riseIn 2s ease 1.4s forwards;
+  .poiesis-sub {
+    font-size: clamp(11px, 1.5vw, 15px); font-weight: 300;
+    font-style: italic; letter-spacing: 0.32em; color: var(--accent);
+    opacity: 0.7; text-align: center; margin-top: 14px;
+    opacity: 0; animation: fadeUp 2s ease 1.2s forwards;
   }
-  .intro-rule {
+  .intro-line {
     width: 1px; height: 0;
-    background: linear-gradient(to bottom, transparent, #b8a882, transparent);
-    margin: 36px auto;
-    animation: growLine 1s ease 2.2s forwards;
+    background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+    margin: 36px auto; opacity: 0.5;
+    animation: lineGrow 1.2s ease 2s forwards;
   }
-  .intro-question {
-    font-size: clamp(13px, 1.8vw, 18px);
-    font-style: italic;
-    color: rgba(240,236,228,0.5);
-    text-align: center;
-    max-width: 480px;
-    line-height: 1.8;
-    opacity: 0;
-    animation: riseIn 2s ease 2.8s forwards;
+  .intro-prompt {
+    font-size: clamp(13px, 1.8vw, 18px); font-weight: 300;
+    font-style: italic; text-align: center;
+    color: rgba(232,240,255,0.5); max-width: 440px; line-height: 1.85;
+    opacity: 0; animation: fadeUp 2s ease 2.5s forwards;
   }
   .begin-btn {
-    margin-top: 48px;
-    background: none;
-    border: 1px solid rgba(184,168,130,0.4);
-    color: #b8a882;
-    font-family: 'Georgia', serif;
-    font-size: 11px;
-    letter-spacing: 0.4em;
-    padding: 14px 40px;
-    cursor: pointer;
-    opacity: 0;
-    animation: riseIn 2s ease 3.4s forwards;
-    transition: all 0.5s;
+    margin-top: 50px; background: none;
+    border: 1px solid rgba(74,158,255,0.35); color: var(--accent);
+    font-family: var(--mono); font-size: 10px; font-weight: 300;
+    letter-spacing: 0.38em; padding: 15px 40px; cursor: none;
+    opacity: 0; animation: fadeUp 2s ease 3.2s forwards;
+    transition: background 0.5s, border-color 0.5s, color 0.5s, box-shadow 0.5s;
   }
-  .begin-btn:hover { background: rgba(184,168,130,0.1); border-color: #b8a882; color: #f0ece4; }
-
-  .vr-hint {
-    margin-top: 20px;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: rgba(184,168,130,0.35);
-    text-align: center;
-    opacity: 0;
-    animation: riseIn 2s ease 3.8s forwards;
+  .begin-btn:hover {
+    background: rgba(74,158,255,0.08);
+    border-color: rgba(74,158,255,0.8);
+    color: var(--paper);
+    box-shadow: 0 0 40px rgba(74,158,255,0.12);
   }
 
   /* Questions */
-  #screen-q { max-width: 640px; margin: auto; gap: 0; }
-  .q-num {
-    font-size: 10px; letter-spacing: 0.5em;
-    color: #b8a882; opacity: 0.5;
-    align-self: flex-start; margin-bottom: 48px;
-    font-family: 'Courier New', monospace;
+  #screen-questions { gap: 0; max-width: 660px; margin: auto; }
+  .q-counter {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.5em;
+    color: var(--accent); opacity: 0.45; margin-bottom: 50px; align-self: flex-start;
   }
   .q-text {
-    font-size: clamp(22px, 3.5vw, 40px);
-    font-weight: 300; font-style: italic;
-    color: #f0ece4; line-height: 1.5;
-    align-self: flex-start; margin-bottom: 44px;
-    transition: opacity 0.6s;
+    font-size: clamp(22px, 3.8vw, 40px); font-weight: 300;
+    font-style: italic; line-height: 1.45; color: var(--paper);
+    margin-bottom: 32px; align-self: flex-start;
+    transition: opacity 0.5s, transform 0.5s;
+    text-shadow: 0 0 40px rgba(74,158,255,0.15);
   }
-  .q-field {
+  .q-text.hide { opacity: 0; transform: translateY(-8px); }
+  .q-progress-track {
+    width: 100%; height: 1px;
+    background: rgba(74,158,255,0.1);
+    margin-bottom: 38px; align-self: flex-start;
+  }
+  .q-progress-fill { height: 100%; background: var(--accent); transition: width 0.9s ease; width: 0%; opacity: 0.6; }
+  .q-input {
     width: 100%; background: none; border: none;
-    border-bottom: 1px solid rgba(240,236,228,0.18);
-    color: #f0ece4;
-    font-family: 'Georgia', serif;
-    font-size: clamp(15px, 2vw, 21px);
-    font-weight: 300; padding: 10px 0;
-    outline: none; caret-color: #b8a882;
-    transition: border-color 0.4s;
+    border-bottom: 1px solid rgba(232,240,255,0.12);
+    color: var(--paper); font-family: var(--serif);
+    font-size: clamp(15px, 2.1vw, 21px); font-weight: 300;
+    padding: 11px 0; outline: none; caret-color: var(--accent);
+    transition: border-color 0.4s, opacity 0.5s;
   }
-  .q-field:focus { border-bottom-color: #b8a882; }
-  .q-field::placeholder { color: rgba(240,236,228,0.18); font-style: italic; }
+  .q-input:focus { border-bottom-color: rgba(74,158,255,0.5); }
+  .q-input::placeholder { color: rgba(232,240,255,0.14); font-style: italic; }
+  .q-input.hide { opacity: 0; }
   .q-hint {
-    font-family: 'Courier New', monospace;
-    font-size: 9px; letter-spacing: 0.3em;
-    color: rgba(240,236,228,0.18);
-    margin-top: 14px; align-self: flex-start;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.28em;
+    color: rgba(232,240,255,0.14); margin-top: 14px; align-self: flex-start;
   }
-  .q-continue {
+  .q-next {
     align-self: flex-end; margin-top: 52px;
-    background: none; border: none;
-    color: #b8a882;
-    font-family: 'Courier New', monospace;
-    font-size: 10px; letter-spacing: 0.4em;
-    cursor: pointer; opacity: 0.4;
-    transition: opacity 0.3s;
+    background: none; border: none; color: var(--accent);
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.4em;
+    cursor: none; opacity: 0.25; transition: opacity 0.4s;
+    display: flex; align-items: center; gap: 10px;
   }
-  .q-continue.ready { opacity: 1; }
+  .q-next.ready { opacity: 1; }
+  .q-next::after { content: '→'; font-size: 13px; }
 
   /* Companion */
-  #screen-companion { max-width: 620px; margin: auto; gap: 0; }
-  .poiesis-label {
-    font-family: 'Courier New', monospace;
-    font-size: 9px; letter-spacing: 0.55em;
-    color: #b8a882; opacity: 0.45;
-    align-self: flex-start; margin-bottom: 36px;
+  #screen-companion { gap: 0; max-width: 640px; margin: auto; overflow-y: auto; max-height: 100vh; padding: 80px 40px; justify-content: flex-start; }
+  .companion-label {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.55em;
+    color: var(--accent); opacity: 0.35; align-self: flex-start; margin-bottom: 36px;
   }
   .companion-text {
-    font-size: clamp(17px, 2.6vw, 28px);
-    font-weight: 300; font-style: italic;
-    color: #f0ece4; line-height: 1.75;
-    align-self: flex-start; min-height: 160px;
+    font-size: clamp(15px, 2vw, 22px); font-weight: 300;
+    font-style: italic; line-height: 1.9; color: var(--paper);
+    align-self: flex-start; white-space: pre-wrap;
   }
   .cursor-blink {
     display: inline-block; width: 2px; height: 1em;
-    background: #b8a882; margin-left: 3px;
-    vertical-align: text-bottom;
-    animation: blink 1s step-end infinite;
-  }
-  .craft-label {
-    font-family: 'Courier New', monospace;
-    font-size: 9px; letter-spacing: 0.5em;
-    color: rgba(240,236,228,0.2);
-    margin-top: 52px; align-self: flex-start;
-  }
-  .craft-word {
-    font-size: clamp(32px, 6vw, 72px);
-    font-weight: 300; letter-spacing: 0.14em;
-    color: #b8a882; margin-top: 8px;
-    align-self: flex-start;
-    opacity: 0; transform: translateY(8px);
-    transition: opacity 1.2s, transform 1.2s;
-  }
-  .craft-word.show { opacity: 1; transform: translateY(0); }
-  .enter-vr-btn {
-    align-self: flex-end; margin-top: 48px;
-    background: none;
-    border: 1px solid rgba(184,168,130,0.3);
-    color: #b8a882;
-    font-family: 'Courier New', monospace;
-    font-size: 10px; letter-spacing: 0.3em;
-    padding: 12px 28px; cursor: pointer;
-    transition: all 0.4s;
-  }
-  .enter-vr-btn:hover { border-color: #b8a882; color: #f0ece4; background: rgba(184,168,130,0.08); }
-  .again-link {
-    align-self: center; margin-top: 20px;
-    background: none; border: none;
-    color: rgba(184,168,130,0.35);
-    font-family: 'Courier New', monospace;
-    font-size: 9px; letter-spacing: 0.3em;
-    cursor: pointer; transition: color 0.3s;
-  }
-  .again-link:hover { color: #b8a882; }
-
-  /* Loading dots */
-  .loading::after {
-    content: '';
-    animation: ldots 1.4s steps(4, end) infinite;
-  }
-  @keyframes ldots {
-    0%  { content: ''; }
-    25% { content: '.'; }
-    50% { content: '..'; }
-    75% { content: '...'; }
+    background: var(--accent); margin-left: 3px;
+    vertical-align: text-bottom; animation: blink 1s step-end infinite;
   }
 
-  @keyframes riseIn { to { opacity: 1; transform: translateY(0); } }
-  @keyframes growLine { to { height: 56px; } }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .again-btn {
+    align-self: flex-end; margin-top: 52px;
+    background: none; border: 1px solid rgba(74,158,255,0.2);
+    color: rgba(74,158,255,0.5); font-family: var(--mono);
+    font-size: 8px; letter-spacing: 0.38em; padding: 10px 22px;
+    cursor: none; transition: all 0.4s;
+  }
+  .again-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* VR scene sits behind UI */
-  a-scene { position: fixed; inset: 0; z-index: 1; }
-
-  /* Hide A-Frame VR button — we add our own */
-  .a-enter-vr { display: none !important; }
+  .loading-dots::after {
+    content: ''; animation: dots 1.4s steps(4,end) infinite;
+  }
+  @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+  @keyframes fadeUp  { to { opacity: 1; transform: translateY(0); } }
+  @keyframes lineGrow { to { height: 54px; } }
+  @keyframes blink   { 0%,100%{opacity:1} 50%{opacity:0} }
 </style>
 </head>
 <body>
 
-<!-- ═══ 3D WORLD ══════════════════════════════════════════════════════════════ -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div id="breath-ring"></div>
+<div id="breath-ring-2"></div>
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<!-- 3D NEBULA SCENE -->
 <a-scene
   id="vr-scene"
-  background="color: #04030a"
-  fog="type: exponential; color: #07050f; density: 0.035"
+  background="color: #04070f"
+  fog="type: exponential; color: #060a14; density: 0.022"
   renderer="antialias: true; colorManagement: true"
   vr-mode-ui="enabled: false"
 >
-  <!-- Lighting -->
-  <a-light type="ambient" color="#1a1630" intensity="0.8"></a-light>
-  <a-light type="directional" color="#b8a882" intensity="0.3" position="2 4 -3"></a-light>
-  <a-light type="point" color="#3d2a6e" intensity="1.2" position="0 2 -4" distance="12"></a-light>
-  <a-light type="point" color="#1a3a4a" intensity="0.8" position="-4 1 -6" distance="10"></a-light>
+  <!-- Lighting — blue nebula palette -->
+  <a-light type="ambient"     color="#0a1628" intensity="1.2"></a-light>
+  <a-light type="point" color="#1a4aaa" intensity="2.5" position="0 3 -6"   distance="18"></a-light>
+  <a-light type="point" color="#0a2a6a" intensity="1.8" position="-5 2 -8"  distance="15"></a-light>
+  <a-light type="point" color="#2a1a5a" intensity="1.2" position="5 1 -7"   distance="12"></a-light>
+  <a-light type="point" color="#0a3a8a" intensity="1.0" position="0 -1 -4"  distance="10"></a-light>
 
-  <!-- Ground plane — dark, subtle -->
-  <a-plane
-    position="0 -1.8 -4"
-    rotation="-90 0 0"
-    width="40" height="40"
-    color="#06040e"
-    roughness="0.95"
-    metalness="0.1"
-  ></a-plane>
+  <!-- Ground — reflective dark blue -->
+  <a-plane position="0 -1.8 -6" rotation="-90 0 0" width="60" height="60"
+    color="#060a14" roughness="0.9" metalness="0.2"></a-plane>
 
-  <!-- Floating geometry — workshop objects emerging from fog -->
-  <a-entity id="workshop">
+  <!-- Nebula cloud layers — large translucent spheres with blue glow -->
+  <a-sphere position="-4 2 -12" radius="4.5" color="#0a1e50" opacity="0.18"
+    animation="property:position; to:-4 2.8 -12; loop:true; dur:12000; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="5 1 -14"  radius="5.5" color="#0d2460" opacity="0.14"
+    animation="property:position; to:5 1.6 -14; loop:true; dur:16000; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="0 4 -16"  radius="6"   color="#091840" opacity="0.12"
+    animation="property:position; to:0 5 -16; loop:true; dur:20000; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="-2 0 -10" radius="3"   color="#142860" opacity="0.16"
+    animation="property:position; to:-2 0.5 -10; loop:true; dur:9000; dir:alternate; easing:easeInOutSine"></a-sphere>
 
-    <!-- Large slow-rotating ring -->
-    <a-torus
-      position="0 1.2 -7"
-      radius="3.2" radius-tubular="0.015"
-      color="#2a1f50" opacity="0.6"
-      animation="property: rotation; to: 0 360 15; loop: true; dur: 60000; easing: linear"
-    ></a-torus>
-    <a-torus
-      position="0 1.2 -7"
-      radius="2.4" radius-tubular="0.01"
-      color="#b8a882" opacity="0.15"
-      animation="property: rotation; to: 0 -360 -8; loop: true; dur: 80000; easing: linear"
-    ></a-torus>
+  <!-- Stars — tiny bright points -->
+  <a-sphere position="-3.2 2.8 -8"  radius="0.025" color="#8ab8ff" opacity="0.9"
+    animation="property:opacity; from:0.9; to:0.2; loop:true; dur:2200; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="2.8 3.4 -9"   radius="0.02"  color="#aaccff" opacity="0.8"
+    animation="property:opacity; from:0.8; to:0.1; loop:true; dur:3100; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="-1.5 4.2 -11" radius="0.018" color="#7aaaff" opacity="0.85"
+    animation="property:opacity; from:0.85; to:0.15; loop:true; dur:1900; dir:alternate"></a-sphere>
+  <a-sphere position="4.1 2.1 -10"  radius="0.022" color="#99bbff" opacity="0.75"
+    animation="property:opacity; from:0.75; to:0.1; loop:true; dur:2700; dir:alternate"></a-sphere>
+  <a-sphere position="-4.5 1.4 -9"  radius="0.016" color="#bbccff" opacity="0.7"
+    animation="property:opacity; from:0.7; to:0.05; loop:true; dur:3500; dir:alternate"></a-sphere>
+  <a-sphere position="1.2 4.8 -13"  radius="0.02"  color="#8ab0ff" opacity="0.8"
+    animation="property:opacity; from:0.8; to:0.2; loop:true; dur:4200; dir:alternate"></a-sphere>
+  <a-sphere position="3.5 4.0 -12"  radius="0.015" color="#aab8ff" opacity="0.65"
+    animation="property:opacity; from:0.65; to:0.1; loop:true; dur:2900; dir:alternate"></a-sphere>
+  <a-sphere position="-2.8 3.8 -10" radius="0.019" color="#7ab0ff" opacity="0.78"
+    animation="property:opacity; from:0.78; to:0.12; loop:true; dur:1700; dir:alternate"></a-sphere>
+  <a-sphere position="0.4 5.2 -14"  radius="0.022" color="#9ac0ff" opacity="0.7"
+    animation="property:opacity; from:0.7; to:0.08; loop:true; dur:3800; dir:alternate"></a-sphere>
+  <a-sphere position="-5.2 3.2 -12" radius="0.017" color="#b0c8ff" opacity="0.6"
+    animation="property:opacity; from:0.6; to:0.05; loop:true; dur:2400; dir:alternate"></a-sphere>
 
-    <!-- Floating orbs — particles of light -->
-    <a-sphere position="-2.8 0.4 -5" radius="0.06" color="#b8a882" opacity="0.7"
-      animation="property: position; to: -2.8 0.9 -5; loop: true; dur: 4000; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
-    <a-sphere position="2.4 1.2 -6" radius="0.04" color="#8a7fcc" opacity="0.6"
-      animation="property: position; to: 2.4 1.7 -6; loop: true; dur: 5500; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
-    <a-sphere position="-1.2 2.1 -8" radius="0.05" color="#c4a86a" opacity="0.5"
-      animation="property: position; to: -1.2 2.6 -8; loop: true; dur: 3800; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
-    <a-sphere position="3.1 0.2 -7" radius="0.035" color="#7a8faa" opacity="0.55"
-      animation="property: position; to: 3.1 0.7 -7; loop: true; dur: 6200; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
-    <a-sphere position="0.8 2.8 -9" radius="0.045" color="#b8a882" opacity="0.4"
-      animation="property: position; to: 0.8 3.3 -9; loop: true; dur: 4800; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
-    <a-sphere position="-3.5 1.5 -8" radius="0.03" color="#9a86cc" opacity="0.5"
-      animation="property: position; to: -3.5 2 -8; loop: true; dur: 7000; dir: alternate; easing: easeInOutSine">
-    </a-sphere>
+  <!-- Drifting orbs — larger nebula particles -->
+  <a-sphere position="-2.4 0.8 -6"  radius="0.07" color="#4a9eff" opacity="0.55"
+    animation="property:position; to:-2.4 1.4 -6; loop:true; dur:5000; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="2.9 1.5 -7.5" radius="0.05" color="#2a6aee" opacity="0.6"
+    animation="property:position; to:2.9 2.1 -7.5; loop:true; dur:6200; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="-1.0 2.4 -9"  radius="0.055" color="#5a8aff" opacity="0.45"
+    animation="property:position; to:-1.0 3.0 -9; loop:true; dur:4400; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="3.4 0.4 -8"   radius="0.04"  color="#3a7aff" opacity="0.5"
+    animation="property:position; to:3.4 1.0 -8; loop:true; dur:7100; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <a-sphere position="0.6 3.2 -10"  radius="0.045" color="#6a9aff" opacity="0.4"
+    animation="property:position; to:0.6 3.8 -10; loop:true; dur:5600; dir:alternate; easing:easeInOutSine"></a-sphere>
+  <!-- Gold accent orb -->
+  <a-sphere position="1.4 1.2 -5.5" radius="0.04"  color="#c9a84c" opacity="0.6"
+    animation="property:position; to:1.4 1.7 -5.5; loop:true; dur:4800; dir:alternate; easing:easeInOutSine"></a-sphere>
 
-    <!-- Scattered workshop tools — simple abstract forms -->
-    <a-box position="-3 -1.2 -5" width="0.4" height="0.08" depth="0.08"
-      color="#2a1f40" opacity="0.8" rotation="0 25 0">
-    </a-box>
-    <a-box position="2.8 -1.2 -4.5" width="0.06" height="0.9" depth="0.06"
-      color="#1e1630" opacity="0.9" rotation="0 -15 8">
-    </a-box>
-    <a-cylinder position="-1.8 -1.2 -4" radius="0.12" height="0.06"
-      color="#2a2040" opacity="0.7">
-    </a-cylinder>
-
-    <!-- Craft word in 3D — appears after response -->
-    <a-text
-      id="craft-3d"
-      value=""
-      position="0 1.4 -5"
-      align="center"
-      color="#b8a882"
-      width="6"
-      font="https://cdn.jsdelivr.net/gh/etiennepinchon/aframe-fonts@master/fonts/cinzel/Cinzel-Regular.json"
-      opacity="0"
-      animation__fade="property: opacity; from: 0; to: 0; dur: 2000"
-      animation__float="property: position; to: 0 1.7 -5; loop: true; dur: 5000; dir: alternate; easing: easeInOutSine"
-    ></a-text>
-
-  </a-entity>
+  <!-- Tunnel rings — blue -->
+  <a-torus position="0 1.2 -9"  radius="3.8" radius-tubular="0.014" color="#0a2860" opacity="0.5"
+    animation="property:rotation; to:0 360 20; loop:true; dur:70000; easing:linear"></a-torus>
+  <a-torus position="0 1.2 -9"  radius="2.8" radius-tubular="0.009" color="#4a9eff" opacity="0.14"
+    animation="property:rotation; to:0 -360 -12; loop:true; dur:90000; easing:linear"></a-torus>
+  <a-torus position="0 1.2 -9"  radius="1.9" radius-tubular="0.007" color="#2a5acc" opacity="0.2"
+    animation="property:rotation; to:15 360 6; loop:true; dur:55000; easing:linear"></a-torus>
 
   <!-- Camera -->
   <a-entity position="0 0 0">
-    <a-camera
-      look-controls="enabled: true; magicWindowTrackingEnabled: true"
-      wasd-controls="enabled: false"
-      position="0 1.6 0"
-    ></a-camera>
+    <a-camera look-controls="enabled:true; magicWindowTrackingEnabled:true"
+      wasd-controls="enabled:false" position="0 1.6 0">
+    </a-camera>
   </a-entity>
 
 </a-scene>
 
-<!-- ═══ 2D UI OVERLAY ════════════════════════════════════════════════════════ -->
-<div id="ui-overlay">
+<!-- SCREEN 1: Intro -->
+<div class="screen active" id="screen-intro">
+  <h1 class="poiesis-title">Poiesis</h1>
+  <p class="poiesis-sub">the act of bringing something into being</p>
+  <div class="intro-line"></div>
+  <p class="intro-prompt">
+    What if you could meet yourself<br>
+    without your name, your title,<br>
+    your history?
+  </p>
+  <button class="begin-btn" onclick="begin()">BEGIN</button>
+</div>
 
-  <!-- SCREEN 1: Intro -->
-  <div class="ui-screen active" id="screen-intro">
-    <h1 class="intro-title">Poiesis</h1>
-    <p class="intro-sub">the act of bringing something into being</p>
-    <div class="intro-rule"></div>
-    <p class="intro-question">
-      What if you could meet yourself<br>
-      without your name, your title,<br>
-      your history?
-    </p>
-    <button class="begin-btn" onclick="startExperience()">BEGIN</button>
-    <p class="vr-hint">OPEN IN QUEST BROWSER FOR FULL IMMERSION</p>
-  </div>
+<!-- SCREEN 2: Questions -->
+<div class="screen" id="screen-questions">
+  <p class="q-counter" id="q-counter">01 / 04</p>
+  <p class="q-text"    id="q-text">Who are you — without your name?</p>
+  <div class="q-progress-track"><div class="q-progress-fill" id="q-progress"></div></div>
+  <input class="q-input" id="q-input" type="text"
+    placeholder="speak freely..." autocomplete="off" spellcheck="false"/>
+  <p class="q-hint">press enter or click continue</p>
+  <button class="q-next" id="q-next" onclick="nextQuestion()">CONTINUE</button>
+</div>
 
-  <!-- SCREEN 2: Questions -->
-  <div class="ui-screen" id="screen-q">
-    <p class="q-num" id="q-num">01 / 04</p>
-    <p class="q-text" id="q-text">Who are you — without your name?</p>
-    <input class="q-field" id="q-field" type="text"
-      placeholder="speak freely..."
-      autocomplete="off" spellcheck="false"
-    />
-    <p class="q-hint">press enter or tap continue</p>
-    <button class="q-continue" id="q-continue" onclick="nextQ()">CONTINUE →</button>
-  </div>
+<!-- SCREEN 3: Companion -->
+<div class="screen" id="screen-companion">
+  <p class="companion-label">POIESIS SPEAKS</p>
+  <p class="companion-text" id="companion-text"></p>
 
-  <!-- SCREEN 3: Companion response -->
-  <div class="ui-screen" id="screen-companion">
-    <p class="poiesis-label">POIESIS SPEAKS</p>
-    <p class="companion-text" id="companion-text"></p>
-    <p class="craft-label">YOUR CRAFT</p>
-    <p class="craft-word" id="craft-word"></p>
-    <button class="enter-vr-btn" id="enter-vr-btn" onclick="enterVR()">ENTER THE SPACE →</button>
-    <button class="again-link" onclick="restart()">begin again</button>
-  </div>
-
+  <button class="again-btn" onclick="restart()">BEGIN AGAIN</button>
 </div>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────────
-const questions    = [
-  "Who are you — without your name?",
-  "What do you love doing when no one is watching?",
-  "If you had no obligations, what would you make?",
-  "What feeling do you most want to give the world?"
-];
-const placeholders = [
-  "beyond names, beyond titles...",
-  "your secret honest answer...",
-  "without limits or judgment...",
-  "speak from somewhere deep..."
-];
+// ── Cursor ──────────────────────────────────────────
+const cursorDot=document.getElementById('cursor'),cursorRing=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function animCursor(){
+  rx+=(mx-rx)*0.13;ry+=(my-ry)*0.13;
+  cursorDot.style.left=mx+'px';cursorDot.style.top=my+'px';
+  cursorRing.style.left=rx+'px';cursorRing.style.top=ry+'px';
+  requestAnimationFrame(animCursor);
+})();
+document.querySelectorAll('button,input').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cursorRing.style.width='50px';cursorRing.style.height='50px';cursorRing.style.borderColor='rgba(74,158,255,0.7)';});
+  el.addEventListener('mouseleave',()=>{cursorRing.style.width='30px';cursorRing.style.height='30px';cursorRing.style.borderColor='rgba(74,158,255,0.4)';});
+});
 
-let currentQ = 0;
-let answers   = [];
-let craftResult = '';
-
-// ─── DOM refs ─────────────────────────────────────────────────────────────────
-const qNum       = document.getElementById('q-num');
-const qText      = document.getElementById('q-text');
-const qField     = document.getElementById('q-field');
-const qContinue  = document.getElementById('q-continue');
-const companionEl = document.getElementById('companion-text');
-const craftEl    = document.getElementById('craft-word');
-const craft3d    = document.getElementById('craft-3d');
-
-// ─── Screen switching ─────────────────────────────────────────────────────────
-function showScreen(id) {
-  document.querySelectorAll('.ui-screen').forEach(s => {
-    s.classList.remove('active');
+// ── Parallax ─────────────────────────────────────────
+document.addEventListener('mousemove',e=>{
+  const dx=(e.clientX/window.innerWidth-0.5)*10;
+  const dy=(e.clientY/window.innerHeight-0.5)*8;
+  document.querySelectorAll('.screen.active').forEach(s=>{
+    s.style.transform=`translate(${dx*0.35}px,${dy*0.35}px)`;
   });
+});
+
+
+// ── Show UI chrome ────────────────────────────────────
+function showUI(){
+  document.querySelectorAll('.corner').forEach(c=>c.classList.add('show'));
+  document.getElementById('breath-ring').style.opacity='1';
+  document.getElementById('breath-ring-2').style.opacity='1';
+}
+
+// ── Questions ─────────────────────────────────────────
+const questions=[
+  "Introduce yourself — without using your name, profession, nationality, religion, ethnicity, or race.",
+  "Stripped of every role the world gave you — what do you actually love?",
+  "If no one needed anything from you, and you needed nothing from anyone — what would you make, build, or become?",
+  "What kind of world would you inhabit if you were truly free to shape your own reality?"
+];
+const placeholders=[
+  "speak only from what remains...",
+  "the thing you return to when no one is watching...",
+  "without permission, without obligation...",
+  "your Umwelt — the world as only you can perceive it..."
+];
+let currentQ=0,answers=[];
+const qCounter=document.getElementById('q-counter');
+const qText=document.getElementById('q-text');
+const qInput=document.getElementById('q-input');
+const qNext=document.getElementById('q-next');
+const qProgress=document.getElementById('q-progress');
+
+function setProgress(n){qProgress.style.width=(n/questions.length*100)+'%';}
+
+qInput.addEventListener('input',()=>{qNext.classList.toggle('ready',qInput.value.trim().length>2);});
+qInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&qInput.value.trim().length>2)nextQuestion();});
+
+function nextQuestion(){
+  const val=qInput.value.trim();if(!val)return;
+  answers.push(val);currentQ++;
+  if(currentQ<questions.length){
+    qText.classList.add('hide');qInput.classList.add('hide');
+    setTimeout(()=>{
+      qCounter.textContent=String(currentQ+1).padStart(2,'0')+' / 0'+questions.length;
+      qText.textContent=questions[currentQ];
+      qInput.placeholder=placeholders[currentQ];
+      qInput.value='';qNext.classList.remove('ready');
+      setProgress(currentQ);
+      qText.classList.remove('hide');qInput.classList.remove('hide');
+      qInput.focus();
+    },500);
+  } else {
+    setProgress(4);goTo('screen-companion');callPoiesis();
+  }
+}
+
+// ── Screen transitions ────────────────────────────────
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id==='screen-questions'){showUI();setTimeout(()=>qInput.focus(),700);}
 }
+function begin(){startMusic();showUI();goTo('screen-questions');}
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-function startExperience() {
-  startMusic();
-  showScreen('screen-q');
-  setTimeout(() => qField.focus(), 600);
-}
+// ── Response engine ───────────────────────────────────
+const companionEl=document.getElementById('companion-text');
 
-// ─── Question logic ───────────────────────────────────────────────────────────
-qField.addEventListener('input', () => {
-  qContinue.classList.toggle('ready', qField.value.trim().length > 2);
-});
-qField.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && qField.value.trim().length > 2) nextQ();
-});
-
-function nextQ() {
-  const val = qField.value.trim();
-  if (!val) return;
-  answers.push(val);
-  currentQ++;
-
-  if (currentQ < questions.length) {
-    qText.style.opacity = '0';
-    qField.style.opacity = '0';
-    setTimeout(() => {
-      qNum.textContent     = String(currentQ + 1).padStart(2,'0') + ' / 0' + questions.length;
-      qText.textContent    = questions[currentQ];
-      qField.placeholder   = placeholders[currentQ];
-      qField.value         = '';
-      qContinue.classList.remove('ready');
-      qText.style.transition  = 'opacity 0.8s';
-      qField.style.transition = 'opacity 0.8s';
-      qText.style.opacity  = '1';
-      qField.style.opacity = '1';
-      qField.focus();
-    }, 500);
-  } else {
-    showScreen('screen-companion');
-    generateResponse();
-  }
-}
-
-// ─── Smart response engine ────────────────────────────────────────────────────
-const reflections = [
-  { keys: ['creat','mak','build','design','art','draw','paint','craft','sculpt','write','music','song','danc','film','photo'],
-    craft: 'living form',
-    texts: [
-      "You make things so that the world can feel what you feel — and that is not a small gift. Whatever you bring into being carries a frequency only you can generate.",
-      "There is a maker in you that does not wait for permission. The work you create holds the shape of something irreducibly true.",
-      "You don't just make things. You translate something invisible into something the rest of us can finally touch."
+const reflections=[
+  {
+    keys:['creat','mak','build','design','art','draw','paint','craft','sculpt','write','music','song','danc','film','photo','express'],
+    texts:[
+      "You are someone who brings form to the formless. Not a producer in the economic sense — a maker in the ancient sense. The system told you your creativity had value only if it sold. That was a lie.\n\nTo transcend into your real Umwelt: dedicate one hour each day to making something with no audience and no purpose other than the act itself. Let the work exist without justification. Over time, this practice will dissolve the boundary between who you perform and who you are.",
+      "The world you described — one where you make freely — already exists inside you. It has been waiting under every obligation, every deadline, every role you were asked to fill.\n\nTo step into it: begin treating your creative impulse as non-negotiable, the way you treat eating. Not as reward, not as hobby — as sustenance. Find or build a community of others doing the same. Your Umwelt expands when you share it with people who perceive similarly."
     ]
   },
-  { keys: ['connect','people','listen','help','care','heal','support','community','together','human','empathy','teach','guide'],
-    craft: 'quiet bridges',
-    texts: [
-      "You are the kind of person a room changes around. What you bring is not loudness but presence — and presence is rarer than talent.",
-      "You hold space for others without losing yourself. That is harder than it sounds, and more beautiful than most will ever name.",
-      "You build invisible bridges between people who didn't know they needed each other. Most never give that a name. It deserves one."
+  {
+    keys:['connect','people','listen','help','care','heal','support','community','together','human','empathy','teach','guide','nourish'],
+    texts:[
+      "You are a weaver of human presence. Not a service provider, not a professional helper — someone whose deepest nature is to make others feel less alone. The economy tried to package that as a job title. It is so much larger than that.\n\nTo transcend: seek out spaces where human connection is the entire point — not the means to productivity, but the end itself. Circles, gatherings, slow conversations. Practice receiving as much as you give. Your Umwelt grows when you stop performing care and simply inhabit it.",
+      "The world you are capable of building is one where no one falls through the cracks — because you notice the cracks before anyone else does.\n\nTo step into that world: start small and specific. One relationship tended with full attention. One space you make safer by being in it. Self-actualization for someone like you is not a solitary climb — it is a deepening of how present you can be with another human being."
     ]
   },
-  { keys: ['think','question','wonder','curious','learn','understand','explore','discover','research','idea','solv','analys','investigat'],
-    craft: 'named questions',
-    texts: [
-      "Your mind is not restless — it is alive. The questions you carry are not problems to be solved but doors you keep opening for others.",
-      "You think because the world deserves to be understood more deeply. That is not a hobby. That is a vocation.",
-      "The questions you ask quietly reshape every room you walk into. Most people never notice — but they feel it."
+  {
+    keys:['think','question','wonder','curious','learn','understand','explore','discover','research','idea','solve','know','investigat'],
+    texts:[
+      "You are someone who perceives reality as perpetually unfinished — and that is not restlessness, it is your gift. The economic world wanted your mind for problem-solving. But the questions that matter most to you have no deliverables.\n\nTo transcend: protect time for inquiry that serves no one. Read widely outside your discipline. Follow questions wherever they lead, even into discomfort. Your Umwelt is the world understood more deeply — and it expands every time you resist the urge to stop at the first sufficient answer.",
+      "The world you are reaching toward is one where understanding is its own reward — where the mind is not a resource to be optimised but a universe to be explored.\n\nTo step into it: find the question underneath your questions. The one that has followed you for years without resolution. Give it serious time. Write about it. Your deepest form of self-actualization lives at the edge of what you do not yet understand."
     ]
   },
-  { keys: ['nature','earth','grow','plant','animal','land','sea','sky','quiet','peace','still','slow','simple','garden','forest'],
-    craft: 'deep stillness',
-    texts: [
-      "You carry a kind of slowness the world is desperate for and doesn't know how to ask for. What you offer is not absence — it is depth.",
-      "There is something in you that knows how to be still while everything moves. That is not passivity. That is the oldest form of wisdom.",
-      "You are drawn to what endures — and so you endure. The world needs people who remember what is real."
+  {
+    keys:['nature','earth','grow','plant','animal','land','sea','sky','quiet','peace','still','slow','simple','garden','forest','body'],
+    texts:[
+      "You are someone who still remembers that humans are not separate from the world — they are an expression of it. In a culture of speed and abstraction, this makes you quietly radical.\n\nTo transcend: build your life around rhythms rather than schedules. Grow something. Tend something. Let the pace of living things set your pace. Your Umwelt is ecological — it expands not through accumulation but through deepening your attunement to what is already here.",
+      "The world you would inhabit if you were free is slower, more textured, more alive to small things. That world is not a fantasy — it is a set of choices made consistently over time.\n\nTo step into it: identify one industrial habit — food, time, attention — and replace it with something more deliberate. Your self-actualization is not a destination. It is a quality of presence you cultivate every day in relation to the living world."
     ]
   },
-  { keys: ['freedom','change','justice','truth','voice','speak','story','express','authentic','real','honest','fair','equal','right'],
-    craft: 'honest light',
-    texts: [
-      "You want to say the true thing in a world full of comfortable untruths. That takes more courage than most people will ever know.",
-      "Your need for authenticity is not stubbornness — it is integrity. You are someone who cannot pretend, and that is a gift, not a flaw.",
-      "You carry a story the world needs to hear in exactly your voice. No one else can tell it."
+  {
+    keys:['freedom','change','justice','truth','voice','speak','story','express','authentic','real','honest','fair','equal','right','mean'],
+    texts:[
+      "You are someone for whom authenticity is not a value — it is a necessity. You have always sensed the gap between the world as it is and the world as it could be, and that gap unsettles you in exactly the right way.\n\nTo transcend: stop waiting for permission to tell the truth. The story you carry — about what is wrong, what is possible, what it might feel like to live differently — is needed now. Write it, speak it, embody it. Your Umwelt is the world made more honest by your presence in it.",
+      "The world you described is one where people are seen as they actually are, not as what they produce. You already know how to inhabit that world — you do it every time you refuse to reduce yourself to a role.\n\nTo step into it fully: build practices of radical honesty into your daily life. In small moments and large ones, say what is true. Let your inner world and outer world converge. That convergence is what Maslow called self-actualization."
     ]
   },
-  { keys: ['joy','play','laugh','fun','light','celebrat','wonder','magic','dream','imagine','child','delight','games'],
-    craft: 'living wonder',
-    texts: [
-      "You have kept alive something most people lose around the age of ten. That is not naivety — that is the hardest kind of wisdom.",
-      "The lightness you bring is not shallowness. It is a choice you make every day against the weight of things.",
-      "You remind people that delight is not a reward for finishing the serious work — it is the work."
+  {
+    keys:['joy','play','laugh','fun','light','celebrat','wonder','magic','dream','imagine','child','delight','beauty','awe'],
+    texts:[
+      "You are someone who understands — perhaps without being able to articulate it — that delight is not frivolous. It is one of the most sophisticated responses a human being can have to existence.\n\nTo transcend: defend your capacity for wonder as seriously as you would defend anything precious. Build your days around what astonishes you. Seek beauty without apology. Your Umwelt is the world perceived with full aliveness — and it becomes more real every time you refuse to be dulled by efficiency.",
+      "The world you would build is one where people are allowed to be moved — by beauty, by strangeness, by each other. That world already exists in the moments you fully inhabit.\n\nTo step into it: practice giving your complete attention to one thing each day that has no utility. Let it simply be beautiful. Over time, this attention becomes a way of being — and that way of being is the most human form of transcendence."
     ]
   }
 ];
 
-const defaults = [
-  { craft: 'your becoming',
-    text: "Something in the way you answered tells me you already know yourself — you have just been too busy performing a version of yourself to notice." },
-  { craft: 'unnamed depth',
-    text: "You are harder to categorise than most, which means you contain more. The world will keep trying to name you. You don't have to let it." },
-  { craft: 'open form',
-    text: "What you are is still becoming. That is not uncertainty — that is the most alive a person can be." }
+const defaults=[
+  "What you described cannot be easily categorised — which means you have not yet been fully captured by any single system of meaning. That is rarer than it sounds.\n\nYou are standing at the threshold of your own Umwelt — the world as only you can perceive it. To step into it: begin by spending time in silence with the question of what you would do if no external reward were possible. The answer that surfaces without justification — that is the direction of your self-actualization.",
+  "The shape of who you are is still becoming clear, even to you. That is not a problem. That is the most alive a person can be.\n\nTo transcend into your real world: resist the pressure to resolve yourself into a legible identity. Instead, follow what pulls you — consistently, even irrationally. Your Umwelt forms through movement, not declaration. Maslow's highest need is not a summit you reach — it is a direction you choose, again and again.",
+  "You are harder to name than most people you know. This is because you contain more than any single role can hold.\n\nTo step into the world you are capable of inhabiting: stop asking what you should be and start noticing what you already are when no one is asking anything of you. In those unobserved moments — what do you reach for? What do you protect? What do you return to? That is your essence. Build from there."
 ];
 
-async function generateResponse() {
-  companionEl.innerHTML = '<span class="loading">Poiesis listens</span>';
-  craftEl.classList.remove('show');
-
-  await new Promise(r => setTimeout(r, 2400));
-
-  const combined = answers.join(' ').toLowerCase();
-  let best = null, bestScore = 0;
-
-  for (const group of reflections) {
-    const score = group.keys.filter(k => combined.includes(k)).length;
-    if (score > bestScore) { bestScore = score; best = group; }
-  }
-
-  let text, craft;
-  if (best && bestScore > 0) {
-    text  = best.texts[Math.floor(Math.random() * best.texts.length)];
-    craft = best.craft;
-  } else {
-    const d = defaults[Math.floor(Math.random() * defaults.length)];
-    text  = d.text;
-    craft = d.craft;
-  }
-
-  craftResult = craft;
-
-  companionEl.innerHTML = '';
-  await typeText(companionEl, text);
-
-  craftEl.textContent = craft;
-  setTimeout(() => craftEl.classList.add('show'), 500);
-
-  // Prime the 3D craft word for when they enter VR
-  craft3d.setAttribute('value', craft.toUpperCase());
+function matchReflection(){
+  const combined=answers.join(' ').toLowerCase();
+  let best=null,bestScore=0;
+  for(const g of reflections){const s=g.keys.filter(k=>combined.includes(k)).length;if(s>bestScore){bestScore=s;best=g;}}
+  if(best&&bestScore>0)return best.texts[Math.floor(Math.random()*best.texts.length)];
+  return defaults[Math.floor(Math.random()*defaults.length)];
 }
+async function callPoiesis(){
+  companionEl.innerHTML='<span class="loading-dots">Poiesis listens</span>';
 
-// ─── Type text ────────────────────────────────────────────────────────────────
-function typeText(el, text, speed = 26) {
-  return new Promise(resolve => {
-    let i = 0;
-    const cur = document.createElement('span');
-    cur.className = 'cursor-blink';
-    el.appendChild(cur);
-    const iv = setInterval(() => {
-      el.insertBefore(document.createTextNode(text[i]), cur);
-      i++;
-      if (i >= text.length) {
-        clearInterval(iv);
-        setTimeout(() => { cur.remove(); resolve(); }, 900);
-      }
-    }, speed);
+  await new Promise(r=>setTimeout(r,2400));
+  const text=matchReflection();
+  companionEl.innerHTML='';
+  await typeText(companionEl,text,18);
+
+}
+function typeText(el,text,speed=26){
+  return new Promise(resolve=>{
+    let i=0;
+    const cur=document.createElement('span');cur.className='cursor-blink';el.appendChild(cur);
+    const iv=setInterval(()=>{
+      el.insertBefore(document.createTextNode(text[i]),cur);i++;
+      if(i>=text.length){clearInterval(iv);setTimeout(()=>{cur.remove();resolve();},900);}
+    },speed);
   });
 }
-
-// ─── Enter VR ─────────────────────────────────────────────────────────────────
-function enterVR() {
-  // Fade out the 2D UI
-  document.getElementById('ui-overlay').style.transition = 'opacity 2s';
-  document.getElementById('ui-overlay').style.opacity   = '0';
-  setTimeout(() => {
-    document.getElementById('ui-overlay').style.pointerEvents = 'none';
-  }, 2000);
-
-  // Reveal craft word in 3D space
-  setTimeout(() => {
-    craft3d.setAttribute('animation__fade', 'property: opacity; from: 0; to: 0.85; dur: 3000; easing: easeInOutSine');
-  }, 1000);
-
-  // Try to enter native VR if on Quest
-  const scene = document.getElementById('vr-scene');
-  if (scene && scene.is('vr-mode')) return;
-  if (navigator.xr) {
-    scene.enterVR().catch(() => {});
-  }
+function restart(){
+  currentQ=0;answers=[];
+  qCounter.textContent='01 / 04';qText.textContent=questions[0];
+  qInput.placeholder=placeholders[0];qInput.value='';
+  qNext.classList.remove('ready');setProgress(0);
+  companionEl.innerHTML='';
+  goTo('screen-intro');
 }
 
-// ─── Restart ──────────────────────────────────────────────────────────────────
-function restart() {
-  currentQ    = 0;
-  answers     = [];
-  craftResult = '';
-  currentQ    = 0;
-
-  qNum.textContent   = '01 / 04';
-  qText.textContent  = questions[0];
-  qField.placeholder = placeholders[0];
-  qField.value       = '';
-  qContinue.classList.remove('ready');
-  companionEl.innerHTML = '';
-  craftEl.textContent   = '';
-  craftEl.classList.remove('show');
-  craft3d.setAttribute('value', '');
-  craft3d.setAttribute('animation__fade', 'property: opacity; from: 0; to: 0; dur: 10');
-
-  document.getElementById('ui-overlay').style.opacity    = '1';
-  document.getElementById('ui-overlay').style.pointerEvents = 'all';
-
-  showScreen('screen-intro');
-}
-
-// ─── Generative ambient music ──────────────────────────────────────────────────
-let audioStarted = false;
-let musicParts   = [];
-
-async function startMusic() {
-  if (audioStarted) return;
-  audioStarted = true;
+// ── Ambient music ─────────────────────────────────────
+let audioStarted=false;
+async function startMusic(){
+  if(audioStarted)return;audioStarted=true;
   await Tone.start();
 
-  // Master reverb and effects chain
   const reverb = new Tone.Reverb({ decay: 12, wet: 0.82 }).toDestination();
   const delay  = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.38, wet: 0.28 }).connect(reverb);
   const vol    = new Tone.Volume(-14).connect(delay);
 
-  // Soft sine pad — slow evolving chord
+  // Slow sine pad — evolving chords
   const pad = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'sine' },
     envelope: { attack: 3.5, decay: 2, sustain: 0.7, release: 6 },
     volume: -8
   }).connect(vol);
 
-  // Breathy high harmonics
+  // Occasional shimmer from pentatonic scale
   const shimmer = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'triangle' },
     envelope: { attack: 5, decay: 3, sustain: 0.4, release: 8 },
     volume: -18
   }).connect(vol);
 
-  // Deep sub tone
+  // Deep sub — physical weight
   const sub = new Tone.Synth({
     oscillator: { type: 'sine' },
     envelope: { attack: 4, decay: 4, sustain: 0.5, release: 8 },
     volume: -20
   }).connect(vol);
 
-  // Pentatonic scale — no dissonance, always serene
-  const scale = ['C3','E3','G3','A3','B3','D4','E4','G4','A4','B4','D5','E5'];
+  // Pentatonic scale — no note ever clashes with another
+  const scale  = ['C3','E3','G3','A3','B3','D4','E4','G4','A4','B4','D5','E5'];
   const chords = [
     ['C3','G3','E4','B4'],
     ['A2','E3','C4','G4'],
     ['G2','D3','B3','F4'],
     ['E2','B2','G3','D4'],
   ];
+  let ci = 0;
 
-  let chordIdx = 0;
+  Tone.Transport.bpm.value = 3;
 
-  // Slow pad chords — change every 20 seconds
-  const padLoop = new Tone.Loop(time => {
+  // Pad chord shifts every 20 seconds
+  new Tone.Loop(time => {
     pad.releaseAll();
-    const chord = chords[chordIdx % chords.length];
+    const chord = chords[ci % chords.length];
     chord.forEach(note => pad.triggerAttack(note, time));
-    chordIdx++;
-  }, '20n');
-  Tone.Transport.bpm.value = 3; // very slow
-  padLoop.start(0);
+    ci++;
+  }, '20n').start(0);
 
-  // Occasional shimmer notes
-  const shimmerLoop = new Tone.Loop(time => {
+  // Shimmer — random pentatonic notes, sometimes skips
+  new Tone.Loop(time => {
     if (Math.random() > 0.4) {
       const note = scale[Math.floor(Math.random() * scale.length)];
       shimmer.triggerAttackRelease(note, '4n', time);
     }
-  }, '6n');
-  shimmerLoop.start('4n');
+  }, '6n').start('4n');
 
-  // Deep sub pulse — very slow
-  const subLoop = new Tone.Loop(time => {
+  // Sub pulse — very slow
+  new Tone.Loop(time => {
     sub.triggerAttackRelease('C2', '2n', time);
-  }, '40n');
-  subLoop.start('8n');
+  }, '40n').start('8n');
 
-  musicParts = [padLoop, shimmerLoop, subLoop];
   Tone.Transport.start();
 
-  // Fade in gently
+  // Fade in gently over 8 seconds
   vol.volume.rampTo(-6, 8);
-}
-
-function stopMusic() {
-  if (!audioStarted) return;
-  musicParts.forEach(p => p.stop());
-  Tone.Transport.stop();
-  audioStarted = false;
 }
 </script>
 </body>
