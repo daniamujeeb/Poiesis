@@ -84,6 +84,15 @@
   /* 3D scene sits behind everything */
   a-scene { position: fixed; inset: 0; z-index: 0; }
   .a-enter-vr { display: none !important; }
+  .vr-btn {
+    margin-top: 12px; background: none;
+    border: 1px solid rgba(74,158,255,0.2); color: rgba(74,158,255,0.4);
+    font-family: var(--mono); font-size: 9px; font-weight: 300;
+    letter-spacing: 0.38em; padding: 10px 28px; cursor: none;
+    opacity: 0; animation: fadeUp 2s ease 3.8s forwards;
+    transition: background 0.5s, border-color 0.5s, color 0.5s;
+  }
+  .vr-btn:hover { background: rgba(74,158,255,0.06); border-color: rgba(74,158,255,0.5); color: rgba(74,158,255,0.8); }
 
   /* Screens */
   .screen {
@@ -323,6 +332,7 @@
     your history?
   </p>
   <button class="begin-btn" onclick="begin()">BEGIN</button>
+  <button class="vr-btn" onclick="enterVR()">ENTER VR SPACE ↗</button>
 </div>
 
 <!-- SCREEN 2: Questions -->
@@ -516,6 +526,26 @@ function restart(){
   qNext.classList.remove('ready');setProgress(0);
   companionEl.innerHTML='';
   goTo('screen-intro');
+}
+
+// ── Enter VR ──────────────────────────────────────────
+function enterVR(){
+  const scene = document.getElementById('vr-scene');
+  if (!scene) return;
+  // Try WebXR first (Quest)
+  if (navigator.xr) {
+    scene.enterVR().catch(() => {
+      // Fallback: go fullscreen
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    });
+  } else {
+    // Desktop fallback: fullscreen
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }
 }
 
 // ── Ambient music ─────────────────────────────────────
