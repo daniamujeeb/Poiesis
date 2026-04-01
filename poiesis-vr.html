@@ -141,6 +141,15 @@
     opacity: 0; animation: fadeUp 2s ease 3.2s forwards;
     transition: background 0.5s, border-color 0.5s, color 0.5s, box-shadow 0.5s;
   }
+  .vr-btn {
+    margin-top: 10px; background: none;
+    border: 1px solid rgba(74,158,255,0.18); color: rgba(74,158,255,0.38);
+    font-family: var(--mono); font-size: 9px; font-weight: 300;
+    letter-spacing: 0.32em; padding: 9px 28px; cursor: none;
+    opacity: 0; animation: fadeUp 2s ease 3.7s forwards;
+    transition: all 0.4s;
+  }
+  .vr-btn:hover { border-color: rgba(74,158,255,0.6); color: rgba(74,158,255,0.8); }
   .begin-btn:hover {
     background: rgba(74,158,255,0.08);
     border-color: rgba(74,158,255,0.8);
@@ -245,8 +254,7 @@
   background="color: #04070f"
   fog="type: exponential; color: #060a14; density: 0.022"
   renderer="antialias: true; colorManagement: true"
-  vr-mode-ui="enterVRButton: #enter-vr-btn"
-  webxr="optionalFeatures: dom-overlay; domOverlay: #ui-overlay"
+  vr-mode-ui="enabled: false"
 >
   <!-- Lighting — blue nebula palette -->
   <a-light type="ambient"     color="#0a1628" intensity="1.2"></a-light>
@@ -335,7 +343,7 @@
     your history?
   </p>
   <button class="begin-btn" onclick="begin()">BEGIN</button>
-  <button class="vr-btn" onclick="enterVR()">ENTER VR SPACE ↗</button>
+  <button class="vr-btn" onclick="goFullscreen()">⛶ FULLSCREEN</button>
 </div>
 
 <!-- SCREEN 2: Questions -->
@@ -531,39 +539,18 @@ function restart(){
   goTo('screen-intro');
 }
 
-// ── Enter VR ──────────────────────────────────────────
-function enterVR(){
-  const scene = document.getElementById('vr-scene');
-  if (!scene) return;
-  // Try WebXR first (Quest)
-  if (navigator.xr) {
-    scene.enterVR().catch(() => {
-      // Fallback: go fullscreen
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    });
-  } else {
-    // Desktop fallback: fullscreen
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-  }
 }
-
-// ── Enter VR ──────────────────────────────────────────
-function enterVR() {
-  const scene = document.getElementById('vr-scene');
-  if (scene) {
-    scene.enterVR().catch(e => {
-      // Fallback to fullscreen if WebXR not available
-      document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-    });
-  }
+// ── Fullscreen ────────────────────────────────────────
+function goFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen)            el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  else if (el.mozRequestFullScreen)    el.mozRequestFullScreen();
+  else if (el.msRequestFullscreen)     el.msRequestFullscreen();
 }
-document.getElementById('enter-vr-btn') && document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('enter-vr-btn').addEventListener('click', enterVR);
-});
+// Also trigger fullscreen on BEGIN
+const _origBegin = begin;
+begin = function() { goFullscreen(); _origBegin(); };
 
 // ── Ambient music ─────────────────────────────────────
 let audioStarted=false;
@@ -637,15 +624,7 @@ async function startMusic(){
 </script>
 </div><!-- end ui-overlay -->
 
-<button id="enter-vr-btn" style="
-  position:fixed; bottom:24px; right:24px; z-index:999;
-  background:rgba(0,10,40,0.85); border:1px solid rgba(74,158,255,0.4);
-  color:#4a9eff; font-family:'Courier New',monospace; font-size:10px;
-  letter-spacing:0.25em; padding:11px 20px; cursor:pointer;
-  transition: border-color 0.3s, color 0.3s;
-" onmouseenter="this.style.borderColor='rgba(74,158,255,0.8)';this.style.color='#88bbff'"
-   onmouseleave="this.style.borderColor='rgba(74,158,255,0.4)';this.style.color='#4a9eff'"
->ENTER VR</button>
+
 
 </body>
 </html>
